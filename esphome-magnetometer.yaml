@@ -203,7 +203,7 @@ sensor:
       float y2 = id(${prefix_id}qmc5883l_axis_y).state * id(${prefix_id}qmc5883l_axis_y).state;
       float z2 = id(${prefix_id}qmc5883l_axis_z).state * id(${prefix_id}qmc5883l_axis_z).state;
       return x2 + y2 + z2; // Avoid sqrt for performance
-    on_raw_value:
+    on_value:
       then:
         - lambda: |-
             if (x > id(${prefix_id}threshold_upper).state && !id(${prefix_id}axis_value_high)) {
@@ -218,6 +218,9 @@ sensor:
               id(led).turn_off();
             }
     filters:
+      - sliding_window_moving_average:
+        window_size: 3
+        send_every: 3
       - delta: 3
 
   # https://esphome.io/components/sensor/qmc5883l.html
