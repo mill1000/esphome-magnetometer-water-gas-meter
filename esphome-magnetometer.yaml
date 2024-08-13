@@ -59,10 +59,6 @@ globals:
     type: long
     restore_value: yes
     initial_value: '0'
-  - id: ${prefix_id}half_rotations_flow
-    type: long
-    restore_value: no
-    initial_value: '0'
   - id: ${prefix_id}axis_value_high
     type: bool
     restore_value: no
@@ -71,22 +67,10 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: ${prefix_id}calibrating_axis_x_min
+  - id: ${prefix_id}calibrating_min
     type: float
     restore_value: no
-  - id: ${prefix_id}calibrating_axis_x_max
-    type: float
-    restore_value: no
-  - id: ${prefix_id}calibrating_axis_y_min
-    type: float
-    restore_value: no
-  - id: ${prefix_id}calibrating_axis_y_max
-    type: float
-    restore_value: no
-  - id: ${prefix_id}calibrating_axis_z_min
-    type: float
-    restore_value: no
-  - id: ${prefix_id}calibrating_axis_z_max
+  - id: ${prefix_id}calibrating_max
     type: float
     restore_value: no
 
@@ -163,21 +147,6 @@ number:
     optimistic: true
     unit_of_measurement: s
 
-select:
-  - platform: template
-    id: ${prefix_id}axis
-    name: ${prefix_name}Axis
-    entity_category: config
-    options:
-      - x
-      - y
-      - z
-      - None
-    initial_option: None
-    update_interval: never
-    restore_value: true
-    optimistic: true
-
 button:
   - platform: template
     id: ${prefix_id}calibrate_button
@@ -186,60 +155,30 @@ button:
     on_press:
       - lambda: |-
           ESP_LOGI("calibration", "Starting calibration. Make sure ${device_class} is running");
-          id(${prefix_id}calibrating_axis_x_min) = std::numeric_limits<float>::max();
-          id(${prefix_id}calibrating_axis_x_max) = std::numeric_limits<float>::lowest();
-          id(${prefix_id}calibrating_axis_y_min) = std::numeric_limits<float>::max();
-          id(${prefix_id}calibrating_axis_y_max) = std::numeric_limits<float>::lowest();
-          id(${prefix_id}calibrating_axis_z_min) = std::numeric_limits<float>::max();
-          id(${prefix_id}calibrating_axis_z_max) = std::numeric_limits<float>::lowest();
+          id(${prefix_id}calibrating_axis_min) = std::numeric_limits<float>::max();
+          id(${prefix_id}calibrating_axis_max) = std::numeric_limits<float>::lowest();
           id(${prefix_id}calibrating) = true;
       - delay: !lambda return id(${prefix_id}calibration_seconds).state * 1000;
       - lambda: |-
           id(${prefix_id}calibrating) = false;
-          float x_range = id(${prefix_id}calibrating_axis_x_max) - id(${prefix_id}calibrating_axis_x_min);
-          float y_range = id(${prefix_id}calibrating_axis_y_max) - id(${prefix_id}calibrating_axis_y_min);
-          float z_range = id(${prefix_id}calibrating_axis_z_max) - id(${prefix_id}calibrating_axis_z_min);
-          if (x_range < 0) {
-            ESP_LOGW("${prefix_id}calibration", "Didn't get any values for x");
+          float range = id(${prefix_id}calibrating_axis_max) - id(${prefix_id}calibrating_axis_min);
+          if (range < 0) {
+            ESP_LOGW("${prefix_id}calibration", "Didn't get any values.");
           } else {
-            ESP_LOGI("${prefix_id}calibration", "x ranged from %.2f to %.2f",
-                     id(${prefix_id}calibrating_axis_x_min), id(${prefix_id}calibrating_axis_x_max));
+            ESP_LOGI("${prefix_id}calibration", "ranged from %.2f to %.2f",
+                     id(${prefix_id}calibrating_axis_min), id(${prefix_id}calibrating_axis_max));
           }
-          if (y_range < 0) {
-            ESP_LOGW("${prefix_id}calibration", "Didn't get any values for y");
-          } else {
-            ESP_LOGI("${prefix_id}calibration", "y ranged from %.2f to %.2f",
-                     id(${prefix_id}calibrating_axis_y_min), id(${prefix_id}calibrating_axis_y_max));
-          }
-          if (z_range < 0) {
-            ESP_LOGW("${prefix_id}calibration", "Didn't get any values for z");
-          } else {
-            ESP_LOGI("${prefix_id}calibration", "z ranged from %.2f to %.2f",
-                     id(${prefix_id}calibrating_axis_z_min), id(${prefix_id}calibrating_axis_z_max));
-          }
-          std::string axis_with_largest_range;
           float min, max;
-          if (x_range > 20 && x_range > y_range && x_range > z_range) {
-            axis_with_largest_range = "x";
-            min = id(${prefix_id}calibrating_axis_x_min);
-            max = id(${prefix_id}calibrating_axis_x_max);
-          } else if (y_range > 20 && y_range > x_range && y_range > z_range) {
-            axis_with_largest_range = "y";
-            min = id(${prefix_id}calibrating_axis_y_min);
-            max = id(${prefix_id}calibrating_axis_y_max);
-          } else if (z_range > 20 && z_range > x_range && z_range > y_range) {
-            axis_with_largest_range = "z";
-            min = id(${prefix_id}calibrating_axis_z_min);
-            max = id(${prefix_id}calibrating_axis_z_max);
+          if (range > 20) {
+            min = id(${prefix_id}calibrating_axis_min);
+            max = id(${prefix_id}calibrating_axis_max);
           } else {
-            ESP_LOGE("${prefix_id}calibration", "Calibration failed. No axis had a range of at least 20");
+            ESP_LOGE("${prefix_id}calibration", "Calibration failed. Magnitude did not have a range of at least 20");
             return;
           }
           float lower_threshold = min + (max - min) / 2 - 5;
           float upper_threshold = min + (max - min) / 2 + 5;
-          ESP_LOGI("${prefix_id}calibration", "Selected %s axis with lower threshold: %.2f and upper threshold: %.2f",
-                   axis_with_largest_range.c_str(), lower_threshold, upper_threshold);
-          id(${prefix_id}axis).make_call().set_option(axis_with_largest_range).perform();
+          ESP_LOGI("${prefix_id}calibration", "Selected lower threshold: %.2f and upper threshold: %.2f", lower_threshold, upper_threshold);
           id(${prefix_id}threshold_lower).make_call().set_value(roundf(lower_threshold * 10) / 10).perform();
           id(${prefix_id}threshold_upper).make_call().set_value(roundf(upper_threshold * 10) / 10).perform();
 
@@ -254,16 +193,25 @@ sensor:
   # Holds the magnetic field strength value of x, y, or z depending on the axis template select.
   # Increments counters when value crosses thresholds.
   - platform: template
-    id: ${prefix_id}axis_value
-    internal: true
+    id: ${prefix_id}magnitude
+    name: ${prefix_name}Magnetic Field Strength Magnitude
+    internal: ${hide_magnetic_field_strength_sensors}
+    entity_category: diagnostic
+    lambda: |-
+      float x2 = id(${prefix_id}qmc5883l_axis_x).state * id(${prefix_id}qmc5883l_axis_x).state;
+      float y2 = id(${prefix_id}qmc5883l_axis_y).state * id(${prefix_id}qmc5883l_axis_y).state;
+      float z2 = id(${prefix_id}qmc5883l_axis_z).state * id(${prefix_id}qmc5883l_axis_z).state;
+      return x2 + y2 + z2; // Avoid sqrt for performance
     on_raw_value:
       then:
         - lambda: |-
             if (x > id(${prefix_id}threshold_upper).state && !id(${prefix_id}axis_value_high)) {
               id(${prefix_id}axis_value_high) = true;
               id(${prefix_id}half_rotations_total) += 1;
-              id(${prefix_id}half_rotations_flow) += 1;
               id(led).turn_on();
+              // Update total and flow sensors
+              id(${prefix_id}sensor_half_rotations_total).update();
+              id(${prefix_id}sensor_flow).update();
             } else if (x < id(${prefix_id}threshold_lower).state && id(${prefix_id}axis_value_high)) {
               id(${prefix_id}axis_value_high) = false;
               id(led).turn_off();
@@ -276,51 +224,42 @@ sensor:
     id: ${prefix_id}qmc5883l_id
     i2c_id: ${prefix_id}i2c_bus
     address: 0x0D
+    oversampling: ${qmc5883l_oversampling}
+    update_interval: ${qmc5883l_update_interval}
+
     field_strength_x:
       id: ${prefix_id}qmc5883l_axis_x
       name: ${prefix_name}Magnetic Field Strength X
       internal: ${hide_magnetic_field_strength_sensors}
       entity_category: diagnostic
-      on_raw_value:
-        then:
-          - lambda:
-              if (id(${prefix_id}axis).state == "x") id(${prefix_id}axis_value).publish_state(x);
-              if (id(${prefix_id}calibrating)) {
-                id(${prefix_id}calibrating_axis_x_min) = min(id(${prefix_id}calibrating_axis_x_min), x);
-                id(${prefix_id}calibrating_axis_x_max) = max(id(${prefix_id}calibrating_axis_x_max), x);
-              }
       filters:
         - delta: 3
+      on_value:
+        then:
+          - component.update: ${prefix_id}magnitude
+      
     field_strength_y:
       id: ${prefix_id}qmc5883l_axis_y
       name: ${prefix_name}Magnetic Field Strength Y
       internal: ${hide_magnetic_field_strength_sensors}
       entity_category: diagnostic
-      on_raw_value:
-        then:
-          - lambda: |-
-              if (id(${prefix_id}axis).state == "y") id(${prefix_id}axis_value).publish_state(x);
-              if (id(${prefix_id}calibrating)) {
-                id(${prefix_id}calibrating_axis_y_min) = min(id(${prefix_id}calibrating_axis_y_min), x);
-                id(${prefix_id}calibrating_axis_y_max) = max(id(${prefix_id}calibrating_axis_y_max), x);
-              }
       filters:
         - delta: 3
+      on_value:
+        then:
+          - component.update: ${prefix_id}magnitude
+
     field_strength_z:
       id: ${prefix_id}qmc5883l_axis_z
       name: ${prefix_name}Magnetic Field Strength Z
       internal: ${hide_magnetic_field_strength_sensors}
       entity_category: diagnostic
-      on_raw_value:
-        then:
-          - lambda:
-              if (id(${prefix_id}axis).state == "z") id(${prefix_id}axis_value).publish_state(x);
-              if (id(${prefix_id}calibrating)) {
-                id(${prefix_id}calibrating_axis_z_min) = min(id(${prefix_id}calibrating_axis_z_min), x);
-                id(${prefix_id}calibrating_axis_z_max) = max(id(${prefix_id}calibrating_axis_z_max), x);
-              }
       filters:
         - delta: 3
+      on_value:
+        then:
+          - component.update: ${prefix_id}magnitude
+  
     temperature:
       id: ${prefix_id}qmc5883l_temperature
       name: ${prefix_name}Temperature
@@ -332,49 +271,45 @@ sensor:
         - or:
             - throttle: 300s
             - delta: 0.5
-    oversampling: ${qmc5883l_oversampling}
-    update_interval: ${qmc5883l_update_interval}
 
   - platform: template
     id: ${prefix_id}sensor_half_rotations_total
     name: ${prefix_name}Half rotations total
     lambda: return id(${prefix_id}half_rotations_total);
-    update_interval: 1s
+    update_interval: never
     internal: ${hide_half_rotations_total_sensor}
     entity_category: diagnostic
     accuracy_decimals: 0
     state_class: 'total_increasing'
     icon: 'mdi:counter'
-    filters:
-      - delta: 1
+    on_value:
+      then:
+        - component.update: ${prefix_id}sensor_total
 
   - platform: template
     id: ${prefix_id}sensor_total
     name: ${prefix_name}Total
     lambda: return id(${prefix_id}half_rotations_total) * id(${prefix_id}volume_per_half_rotation).state;
-    update_interval: 10s
+    update_interval: never
     accuracy_decimals: 2
     device_class: ${device_class}
     icon: ${device_icon}
     state_class: total_increasing
     unit_of_measurement: ${volume_unit}
-    filters:
-      - or:
-          - throttle: 60s
-          - delta: 0.01
 
   - platform: template
     id: ${prefix_id}sensor_flow
     name: ${prefix_name}Flow
     lambda: |-
-      float flow = id(${prefix_id}half_rotations_flow) * id(${prefix_id}volume_per_half_rotation).state * 60.0 / ${flow_update_interval_seconds};
-      id(${prefix_id}half_rotations_flow) = 0;
+      static float last_timestamp = 0;
+      struct timeval;
+      gettimeofday(&timeval);
+      float timestamp = timeval.tv_sec + timeval.tv_usec / 1e6;
+      float flow = id(${prefix_id}volume_per_half_rotation).state * 60.0 / (timestamp - last_timestamp);
+      ESP_LOGI("${prefix_id}sensor_flow", "Timestamp %.3f, last: %.3f, delta: %.3f, flow: %.2f", timestamp, last_timestamp, timestamp-last_timestamp, flow);
+      last_timestamp = timestamp;
       return flow;
-    update_interval: ${flow_update_interval_seconds}s
+    update_interval: never
     accuracy_decimals: 2
     state_class: measurement
     unit_of_measurement: ${volume_unit}/min
-    filters:
-      - or:
-          - throttle: 60s
-          - delta: 0.01
