@@ -197,6 +197,7 @@ sensor:
     name: ${prefix_name}Magnetic Field Strength Magnitude
     internal: ${hide_magnetic_field_strength_sensors}
     entity_category: diagnostic
+    unit_of_measurement: "µT²"
     lambda: |-
       float x2 = id(${prefix_id}qmc5883l_axis_x).state * id(${prefix_id}qmc5883l_axis_x).state;
       float y2 = id(${prefix_id}qmc5883l_axis_y).state * id(${prefix_id}qmc5883l_axis_y).state;
