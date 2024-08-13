@@ -155,23 +155,23 @@ button:
     on_press:
       - lambda: |-
           ESP_LOGI("calibration", "Starting calibration. Make sure ${device_class} is running");
-          id(${prefix_id}calibrating_axis_min) = std::numeric_limits<float>::max();
-          id(${prefix_id}calibrating_axis_max) = std::numeric_limits<float>::lowest();
+          id(${prefix_id}calibrating_min) = std::numeric_limits<float>::max();
+          id(${prefix_id}calibrating_max) = std::numeric_limits<float>::lowest();
           id(${prefix_id}calibrating) = true;
       - delay: !lambda return id(${prefix_id}calibration_seconds).state * 1000;
       - lambda: |-
           id(${prefix_id}calibrating) = false;
-          float range = id(${prefix_id}calibrating_axis_max) - id(${prefix_id}calibrating_axis_min);
+          float range = id(${prefix_id}calibrating_max) - id(${prefix_id}calibrating_min);
           if (range < 0) {
             ESP_LOGW("${prefix_id}calibration", "Didn't get any values.");
           } else {
             ESP_LOGI("${prefix_id}calibration", "ranged from %.2f to %.2f",
-                     id(${prefix_id}calibrating_axis_min), id(${prefix_id}calibrating_axis_max));
+                     id(${prefix_id}calibrating_min), id(${prefix_id}calibrating_max));
           }
           float min, max;
           if (range > 20) {
-            min = id(${prefix_id}calibrating_axis_min);
-            max = id(${prefix_id}calibrating_axis_max);
+            min = id(${prefix_id}calibrating_min);
+            max = id(${prefix_id}calibrating_max);
           } else {
             ESP_LOGE("${prefix_id}calibration", "Calibration failed. Magnitude did not have a range of at least 20");
             return;
