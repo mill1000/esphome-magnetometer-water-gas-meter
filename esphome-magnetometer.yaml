@@ -206,6 +206,11 @@ sensor:
     on_value:
       then:
         - lambda: |-
+            if (id(${prefix_id}calibrating)) {
+                id(${prefix_id}calibrating_min) = min(id(${prefix_id}calibrating_min), x);
+                id(${prefix_id}calibrating_max) = max(id(${prefix_id}calibrating_max), x);
+                return;
+            }
             if (x > id(${prefix_id}threshold_upper).state && !id(${prefix_id}axis_value_high)) {
               id(${prefix_id}axis_value_high) = true;
               id(${prefix_id}half_rotations_total) += 1;
@@ -219,8 +224,8 @@ sensor:
             }
     filters:
       - sliding_window_moving_average:
-        window_size: 3
-        send_every: 3
+          window_size: 3
+          send_every: 3
       - delta: 3
 
   # https://esphome.io/components/sensor/qmc5883l.html
