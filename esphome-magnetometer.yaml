@@ -302,9 +302,9 @@ sensor:
     name: ${prefix_name}Flow
     lambda: |-
       static float last_timestamp = 0;
-      struct timeval;
-      gettimeofday(&timeval, NULL);
-      float timestamp = timeval.tv_sec + timeval.tv_usec / 1e6;
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      float timestamp = tv.tv_sec + tv.tv_usec / 1e6;
       float flow = id(${prefix_id}volume_per_half_rotation).state * 60.0 / (timestamp - last_timestamp);
       ESP_LOGI("${prefix_id}sensor_flow", "Timestamp %.3f, last: %.3f, delta: %.3f, flow: %.2f", timestamp, last_timestamp, timestamp-last_timestamp, flow);
       last_timestamp = timestamp;
