@@ -38,11 +38,6 @@ esphome:
     then:
       - lambda: App.set_loop_interval(0);
 
-logger:
-  level: INFO
-  logs:
-    qmc5883l: INFO
-
 api:
   services:
     # Based on https://esphome.io/components/sensor/pulse_meter.html#re-setting-the-total-pulse-count
